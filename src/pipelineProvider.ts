@@ -32,10 +32,12 @@ export class PipelineProvider implements vscode.TreeDataProvider<PipelineItem> {
             
             try {
                 const jenkinsPipelines = await this.jenkinsService.getPipelines();
-                items.push(...jenkinsPipelines.map((p: Pipeline) => 
-                    new PipelineItem(p.name, p.status, 'jenkins', p.lastBuildNumber)
-                ));
+                items.push(...jenkinsPipelines);
+
+                const gitlabPipelines = await this.gitlabService.listPipelines();
+                items.push(...gitlabPipelines);
             } catch (error) {
+                console.error('Failed to fetch pipelines:', error);
                 vscode.window.showErrorMessage('Failed to fetch pipelines');
             }
 

@@ -1,41 +1,68 @@
 import * as vscode from 'vscode';
-import { PipelineProvider } from './pipelineProvider';
 import { JenkinsService } from './services/jenkins';
 import { GitLabService } from './services/gitlab';
 import { LogViewer } from './logViewer';
 import { PipelineItem } from './pipelineItem';
+import { PipelineProvider } from './pipelineProvider';
 
 export function activate(context: vscode.ExtensionContext) {
-    // 서비스 초기화
     const jenkinsService = new JenkinsService();
-    const gitlabService = new GitLabService();
-    
-    // Pipeline Provider 및 LogViewer 생성
-    const pipelineProvider = new PipelineProvider(jenkinsService, gitlabService);
-    const logViewer = new LogViewer(context);
-    
-    // Pipeline Explorer 뷰 등록
-    vscode.window.registerTreeDataProvider('pipelineExplorer', pipelineProvider);
+    const gitLabService = new GitLabService();
+    const logViewer = new LogViewer(jenkinsService, gitLabService);
 
-    // 명령어 등록
+    // Pipeline Provider 등록
+    const pipelineProvider = new PipelineProvider(jenkinsService, gitLabService);
+    vscode.window.registerTreeDataProvider('pipelineManager', pipelineProvider);
+
+    // Jenkins 명령어 등록
+    let refreshPipelines = vscode.commands.registerCommand('vscode-pipeline-manager.refreshPipelines', () => {
+        pipelineProvider.refresh();
+        return jenkinsService.getPipelines();
+    });
+
+    let openPipeline = vscode.commands.registerCommand('vscode-pipeline-manager.openPipeline', (pipeline: PipelineItem) => {
+        return jenkinsService.openPipeline(pipeline);
+    });
+
+    let buildPipeline = vscode.commands.registerCommand('vscode-pipeline-manager.buildPipeline', (pipeline: PipelineItem) => {
+        return jenkinsService.buildPipeline(pipeline);
+    });
+
+    // GitLab 명령어 등록
+    let refreshGitLabPipelines = vscode.commands.registerCommand('vscode-pipeline-manager.refreshGitLabPipelines', () => {
+        return gitLabService.listPipelines();
+    });
+
+    let openGitLabPipeline = vscode.commands.registerCommand('vscode-pipeline-manager.openGitLabPipeline', (pipeline: PipelineItem) => {
+        return gitLabService.openPipeline(pipeline);
+    });
+
+    let runGitLabPipeline = vscode.commands.registerCommand('vscode-pipeline-manager.runGitLabPipeline', (pipeline: PipelineItem) => {
+        return gitLabService.runPipeline(pipeline);
+    });
+
+    let showLogs = vscode.commands.registerCommand('pipeline-manager.showLogs', (item: PipelineItem) => {
+        // 파이프라인 타입에 따라 로그 뷰어 호출
+        const isGitLab = item.name.startsWith('Pipeline #');
+        return logViewer.showLogs(item, isGitLab ? 'gitlab' : 'jenkins');
+    });
+
+    // 컨텍스트에 명령어 등록
     context.subscriptions.push(
-        vscode.commands.registerCommand('pipeline-manager.triggerBuild', async (item: PipelineItem) => {
-            if (item.jobType === 'jenkins') {
-                await jenkinsService.triggerBuild(item.label);
-            }
-        }),
-
-        vscode.commands.registerCommand('pipeline-manager.showLogs', async (item: PipelineItem) => {
-            if (item.jobType === 'jenkins' && item.lastBuildNumber) {
-                const log = await jenkinsService.getBuildLogs(item.label, item.lastBuildNumber);
-                logViewer.show(item.label, log);
-            }
-        }),
-
-        vscode.commands.registerCommand('pipeline-manager.refreshPipelines', () => {
-            pipelineProvider.refresh();
-        })
+        refreshPipelines,
+        openPipeline,
+        buildPipeline,
+        refreshGitLabPipelines,
+        openGitLabPipeline,
+        runGitLabPipeline,
+        showLogs
     );
+
+    // 서비스 export
+    return {
+        getJenkinsService: () => jenkinsService,
+        getGitLabService: () => gitLabService
+    };
 }
 
 export function deactivate() {}

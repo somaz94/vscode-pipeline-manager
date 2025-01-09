@@ -1,5 +1,31 @@
 import { JenkinsService } from '../../../src/services/jenkins';
+import { PipelineItem } from '../../../src/pipelineItem';
 import * as vscode from 'vscode';
+
+// vscode 모듈 모킹
+jest.mock('vscode', () => ({
+    TreeItem: class TreeItem {
+        constructor(public readonly label: string, public readonly collapsibleState?: any) {}
+    },
+    TreeItemCollapsibleState: {
+        None: 0,
+        Collapsed: 1,
+        Expanded: 2
+    },
+    Uri: {
+        file: (path: string) => ({ path })
+    },
+    workspace: {
+        getConfiguration: jest.fn()
+    },
+    window: {
+        showErrorMessage: jest.fn(),
+        showInformationMessage: jest.fn()
+    },
+    env: {
+        openExternal: jest.fn()
+    }
+}));
 
 const mockJenkins = {
     jobs: {
@@ -7,9 +33,6 @@ const mockJenkins = {
     },
     job: {
         build: jest.fn()
-    },
-    build: {
-        log: jest.fn()
     }
 };
 
@@ -47,7 +70,6 @@ describe('JenkinsService', () => {
             { name: 'job2', color: 'red', lastBuild: { number: 2 } }
         ];
 
-        // Mock Jenkins API response
         mockJenkins.jobs.list.mockResolvedValue(mockJobs);
 
         const pipelines = await jenkinsService.getPipelines();
@@ -56,20 +78,26 @@ describe('JenkinsService', () => {
         expect(pipelines[0]).toEqual({
             name: 'job1',
             status: 'blue',
-            lastBuildNumber: 1
+            lastBuildNumber: 1,
+            url: 'http://jenkins-test/job/job1/1'
         });
     });
 
-    test('triggerBuild should trigger jenkins build', async () => {
-        const jobName = 'test-job';
+    test('buildPipeline should trigger jenkins build', async () => {
+        const pipeline = new PipelineItem(
+            'test-job',
+            'blue',
+            1,
+            'http://jenkins-test/job/test-job/1'
+        );
         
         mockJenkins.job.build.mockResolvedValue(true);
 
-        const result = await jenkinsService.triggerBuild(jobName);
+        const result = await jenkinsService.buildPipeline(pipeline);
         
         expect(result).toBe(true);
         expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
-            `Build triggered for ${jobName}`
+            `Build triggered for ${pipeline.name}`
         );
     });
 });

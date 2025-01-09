@@ -3,21 +3,23 @@ import { runTests } from '@vscode/test-electron';
 
 async function main() {
     try {
-        // The folder containing the Extension Manifest package.json
-        // Passed to `--extensionDevelopmentPath`
         const extensionDevelopmentPath = path.resolve(__dirname, '../../');
+        const extensionTestsPath = path.resolve(__dirname, './suite/index');
 
-        // The path to test runner
-        // Passed to --extensionTestsPath
-        const extensionTestsPath = path.resolve(__dirname, './extension.test');
-
-        // Download VS Code, unzip it and run the integration test
-        await runTests({ 
-            extensionDevelopmentPath, 
-            extensionTestsPath 
+        await runTests({
+            extensionDevelopmentPath,
+            extensionTestsPath,
+            launchArgs: [
+                '--no-sandbox',
+                '--disable-gpu',
+                '--disable-workspace-trust',
+                '--skip-welcome',
+                '--skip-release-notes'
+            ],
+            timeout: 20000
         });
     } catch (err) {
-        console.error('Failed to run tests');
+        console.error('Failed to run tests', err);
         process.exit(1);
     }
 }
