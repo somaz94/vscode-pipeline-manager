@@ -14,34 +14,107 @@
   "contributes": {
     "commands": [
       {
-        "command": "vscode-pipeline-manager.helloWorld",
-        "title": "Hello World"
+        "command": "pipeline-manager.showPipelines",
+        "title": "Show Pipelines"
+      },
+      {
+        "command": "pipeline-manager.refreshPipelines",
+        "title": "Refresh Pipelines"
+      },
+      {
+        "command": "pipeline-manager.triggerBuild",
+        "title": "Trigger Build"
+      },
+      {
+        "command": "pipeline-manager.showLogs",
+        "title": "Show Logs"
       }
-    ]
+    ],
+    "menus": {
+      "view/item/context": [
+        {
+          "command": "pipeline-manager.triggerBuild",
+          "when": "viewItem == pipeline",
+          "group": "inline"
+        },
+        {
+          "command": "pipeline-manager.showLogs",
+          "when": "viewItem == pipeline",
+          "group": "inline"
+        }
+      ]
+    },
+    "views": {
+      "explorer": [
+        {
+          "id": "pipelineExplorer",
+          "name": "Pipeline Status"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Pipeline Manager",
+      "properties": {
+        "pipelineManager.jenkins.url": {
+          "type": "string",
+          "default": "http://jenkins:8080",
+          "description": "Jenkins server URL"
+        },
+        "pipelineManager.jenkins.username": {
+          "type": "string",
+          "description": "Jenkins username"
+        },
+        "pipelineManager.jenkins.token": {
+          "type": "string",
+          "description": "Jenkins API token"
+        },
+        "pipelineManager.gitlab.url": {
+          "type": "string",
+          "default": "http://gitlab",
+          "description": "GitLab server URL"
+        },
+        "pipelineManager.gitlab.token": {
+          "type": "string",
+          "description": "GitLab personal access token"
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
-    "compile": "webpack",
+    "compile": "tsc -p ./tsconfig.json",
     "watch": "webpack --watch",
     "package": "webpack --mode production --devtool hidden-source-map",
-    "compile-tests": "tsc -p . --outDir out",
-    "watch-tests": "tsc -p . -w --outDir out",
-    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "compile-e2e": "tsc -p ./tsconfig.e2e.json --outDir out",
+    "compile-unit-tests": "tsc -p ./tsconfig.test.json --outDir out",
+    "pretest": "npm run compile-e2e && npm run compile && npm run lint",
     "lint": "eslint src",
-    "test": "vscode-test"
+    "test": "node ./out/test/runTest.js",
+    "test:unit": "jest --config jest.config.js",
+    "test:watch": "jest --watch"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "chai": "^5.1.2",
+    "jenkins": "^1.1.0"
   },
   "devDependencies": {
-    "@types/vscode": "^1.96.0",
+    "@types/chai": "^5.0.1",
+    "@types/jenkins": "^1.0.2",
+    "@types/jest": "^29.5.14",
     "@types/mocha": "^10.0.10",
     "@types/node": "20.x",
+    "@types/vscode": "^1.96.0",
     "@typescript-eslint/eslint-plugin": "^8.17.0",
     "@typescript-eslint/parser": "^8.17.0",
-    "eslint": "^9.16.0",
-    "typescript": "^5.7.2",
-    "ts-loader": "^9.5.1",
-    "webpack": "^5.95.0",
-    "webpack-cli": "^5.1.4",
     "@vscode/test-cli": "^0.0.10",
-    "@vscode/test-electron": "^2.4.1"
+    "@vscode/test-electron": "^2.4.1",
+    "eslint": "^9.16.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.5",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.7.2",
+    "webpack": "^5.95.0",
+    "webpack-cli": "^5.1.4"
   }
 }

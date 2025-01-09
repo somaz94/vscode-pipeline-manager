@@ -1,26 +1,41 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+import { PipelineProvider } from './pipelineProvider';
+import { JenkinsService } from './services/jenkins';
+import { GitLabService } from './services/gitlab';
+import { LogViewer } from './logViewer';
+import { PipelineItem } from './pipelineItem';
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
+    // 서비스 초기화
+    const jenkinsService = new JenkinsService();
+    const gitlabService = new GitLabService();
+    
+    // Pipeline Provider 및 LogViewer 생성
+    const pipelineProvider = new PipelineProvider(jenkinsService, gitlabService);
+    const logViewer = new LogViewer(context);
+    
+    // Pipeline Explorer 뷰 등록
+    vscode.window.registerTreeDataProvider('pipelineExplorer', pipelineProvider);
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "vscode-pipeline-manager" is now active!');
+    // 명령어 등록
+    context.subscriptions.push(
+        vscode.commands.registerCommand('pipeline-manager.triggerBuild', async (item: PipelineItem) => {
+            if (item.jobType === 'jenkins') {
+                await jenkinsService.triggerBuild(item.label);
+            }
+        }),
 
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	const disposable = vscode.commands.registerCommand('vscode-pipeline-manager.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from vscode-pipeline-manager!');
-	});
+        vscode.commands.registerCommand('pipeline-manager.showLogs', async (item: PipelineItem) => {
+            if (item.jobType === 'jenkins' && item.lastBuildNumber) {
+                const log = await jenkinsService.getBuildLogs(item.label, item.lastBuildNumber);
+                logViewer.show(item.label, log);
+            }
+        }),
 
-	context.subscriptions.push(disposable);
+        vscode.commands.registerCommand('pipeline-manager.refreshPipelines', () => {
+            pipelineProvider.refresh();
+        })
+    );
 }
 
-// This method is called when your extension is deactivated
 export function deactivate() {}

@@ -7,10 +7,23 @@
 		],
 		"sourceMap": true,
 		"rootDir": "src",
+		"outDir": "out",
 		"strict": true,   /* enable all strict type-checking options */
 		/* Additional Checks */
 		// "noImplicitReturns": true, /* Report error when not all code paths in function return a value. */
 		// "noFallthroughCasesInSwitch": true, /* Report errors for fallthrough cases in switch statement. */
 		// "noUnusedParameters": true,  /* Report errors on unused parameters. */
-	}
+		"allowSyntheticDefaultImports": true,
+		"esModuleInterop": true,
+		"types": ["node", "mocha"]  // 명시적으로 mocha 타입만 포함
+	},
+	"include": [
+		"src/**/*"
+	],
+	"exclude": [
+		"node_modules",
+		".vscode-test",
+		"tests/**/*",  // tests 디렉토리 제외
+		"out/**/*"     // out 디렉토리 제외
+	]
 }

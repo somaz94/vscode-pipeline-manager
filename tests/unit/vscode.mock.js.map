@@ -1,0 +1,1 @@
+{"version":3,"file":"vscode.mock.js","sourceRoot":"","sources":["vscode.mock.ts"],"names":[],"mappings":";;AAAA,kBAAe;IACb,SAAS,EAAE;QACT,gBAAgB,EAAE,IAAI,CAAC,EAAE,EAAE;KAC5B;IACD,MAAM,EAAE;QACN,gBAAgB,EAAE,IAAI,CAAC,EAAE,EAAE;QAC3B,sBAAsB,EAAE,IAAI,CAAC,EAAE,EAAE;KAClC;CACF,CAAC"}
