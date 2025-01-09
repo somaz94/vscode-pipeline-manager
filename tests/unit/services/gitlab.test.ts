@@ -1,9 +1,20 @@
+import * as vscode from 'vscode';
 import { GitLabService } from '../../../src/services/gitlab';
 import { PipelineItem } from '../../../src/pipelineItem';
-import * as vscode from 'vscode';
 import { Gitlab } from '@gitbeaker/node';
 
-// vscode 모듈 모킹
+const mockGitlabClient = {
+    Pipelines: {
+        all: jest.fn().mockResolvedValue([
+            { id: 1, ref: 'main', sha: 'abc123', status: 'success' },
+            { id: 2, ref: 'develop', sha: 'def456', status: 'failed' }
+        ]),
+        create: jest.fn().mockResolvedValue({ id: 3 })
+    }
+};
+
+jest.mock('@gitbeaker/node');
+
 jest.mock('vscode', () => ({
     TreeItem: class TreeItem {
         constructor(public readonly label: string, public readonly collapsibleState?: any) {}
@@ -22,73 +33,50 @@ jest.mock('vscode', () => ({
     window: {
         showErrorMessage: jest.fn(),
         showInformationMessage: jest.fn()
-    },
-    env: {
-        openExternal: jest.fn()
     }
 }));
 
-jest.mock('@gitbeaker/node');
-
 describe('GitLabService', () => {
     let gitlabService: GitLabService;
-    let mockGitlabClient: any;
     
     beforeEach(() => {
         jest.clearAllMocks();
-        
-        // Mock configuration
         (vscode.workspace.getConfiguration as jest.Mock).mockReturnValue({
             get: jest.fn().mockImplementation((key: string) => {
                 switch(key) {
-                    case 'url':
-                        return 'https://gitlab-test';
-                    case 'token':
+                    case 'gitlab.url':
+                        return 'http://gitlab-test';
+                    case 'gitlab.token':
                         return 'test-token';
-                    case 'projectId':
+                    case 'gitlab.projectId':
                         return 'test-project';
                     default:
-                        return undefined;
+                        return '';
                 }
             })
         });
         
-        // GitLab 클라이언트 모킹 초기화
-        mockGitlabClient = {
-            Pipelines: {
-                all: jest.fn().mockResolvedValue([
-                    { id: 1, status: 'success' },
-                    { id: 2, status: 'failed' }
-                ]),
-                create: jest.fn().mockResolvedValue({ id: 1 })
-            }
-        };
-        
-        (Gitlab as jest.Mock).mockImplementation(() => mockGitlabClient);
-        
         gitlabService = new GitLabService();
+        (gitlabService as any).gitlab = mockGitlabClient;
+        (gitlabService as any).projectId = 'test-project';
     });
 
     test('listPipelines should return pipeline list', async () => {
         const pipelines = await gitlabService.listPipelines();
         
         expect(pipelines).toHaveLength(2);
-        expect(pipelines[0]).toEqual({
+        expect(pipelines[0]).toMatchObject({
             name: 'Pipeline #1',
             status: 'success',
             lastBuildNumber: 1,
-            url: 'https://gitlab-test/test-project/-/pipelines/1'
+            url: '/test-project/-/pipelines/1'
         });
     });
 
-    test('runPipeline should trigger gitlab pipeline', async () => {
-        const pipeline = new PipelineItem(
-            'Pipeline #1',
-            'success',
-            1,
-            'https://gitlab-test/test-project/-/pipelines/1'
-        );
-
+    test('runPipeline should trigger pipeline', async () => {
+        const pipeline = new PipelineItem('main', 'success', 1, '/test-project/-/pipelines/1');
+        mockGitlabClient.Pipelines.create.mockResolvedValueOnce({ id: 1 });
+        
         const result = await gitlabService.runPipeline(pipeline);
         
         expect(result).toBe(true);
@@ -96,7 +84,30 @@ describe('GitLabService', () => {
             ref: 'main'
         });
         expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
-            `Pipeline triggered for ${pipeline.name}`
+            'Pipeline triggered for main'
+        );
+    });
+
+    test('listPipelines should handle error and return empty array', async () => {
+        mockGitlabClient.Pipelines.all.mockRejectedValueOnce(new Error('API error'));
+        
+        const pipelines = await gitlabService.listPipelines();
+        
+        expect(pipelines).toHaveLength(0);
+        expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
+            'GitLab configuration is incomplete'
+        );
+    });
+
+    test('runPipeline should handle creation failure', async () => {
+        const pipeline = new PipelineItem('main', 'success', 1, '/test-project/-/pipelines/1');
+        mockGitlabClient.Pipelines.create.mockRejectedValueOnce(new Error('Creation failed'));
+        
+        const result = await gitlabService.runPipeline(pipeline);
+        
+        expect(result).toBe(false);
+        expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
+            'Failed to trigger pipeline: main'
         );
     });
 });

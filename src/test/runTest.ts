@@ -14,7 +14,8 @@ async function main() {
                 '--disable-gpu',
                 '--disable-workspace-trust',
                 '--skip-welcome',
-                '--skip-release-notes'
+                '--skip-release-notes',
+                '--disable-extensions'
             ],
             timeout: 20000
         });

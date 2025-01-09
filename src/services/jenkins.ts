@@ -61,6 +61,7 @@ export class JenkinsService {
                 `${this.baseUrl}/job/${job.name}`
             ));
         } catch (error) {
+            vscode.window.showErrorMessage('Failed to get pipelines');
             console.error('Jenkins error:', error);
             return [];
         }

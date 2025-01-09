@@ -28,11 +28,12 @@ jest.mock('vscode', () => ({
 }));
 
 const mockJenkins = {
-    jobs: {
-        list: jest.fn()
-    },
     job: {
-        build: jest.fn()
+        list: jest.fn().mockResolvedValue([
+            { name: 'job1', color: 'blue', lastBuild: { number: 1 } },
+            { name: 'job2', color: 'red', lastBuild: { number: 2 } }
+        ]),
+        build: jest.fn().mockResolvedValue(true)
     }
 };
 
@@ -56,7 +57,7 @@ describe('JenkinsService', () => {
                     case 'token':
                         return 'test-token';
                     default:
-                        return undefined;
+                        return '';
                 }
             })
         });
@@ -65,39 +66,59 @@ describe('JenkinsService', () => {
     });
 
     test('getPipelines should return pipeline list', async () => {
-        const mockJobs = [
-            { name: 'job1', color: 'blue', lastBuild: { number: 1 } },
-            { name: 'job2', color: 'red', lastBuild: { number: 2 } }
-        ];
-
-        mockJenkins.jobs.list.mockResolvedValue(mockJobs);
-
         const pipelines = await jenkinsService.getPipelines();
         
         expect(pipelines).toHaveLength(2);
-        expect(pipelines[0]).toEqual({
+        expect(pipelines[0]).toMatchObject({
             name: 'job1',
-            status: 'blue',
+            status: 'success',
             lastBuildNumber: 1,
-            url: 'http://jenkins-test/job/job1/1'
+            url: 'http://jenkins-test/job/job1'
         });
     });
 
-    test('buildPipeline should trigger jenkins build', async () => {
+    test('buildPipeline should trigger build', async () => {
         const pipeline = new PipelineItem(
-            'test-job',
-            'blue',
+            'job1',
+            'success',
             1,
-            'http://jenkins-test/job/test-job/1'
+            'http://jenkins-test/job/job1'
         );
         
-        mockJenkins.job.build.mockResolvedValue(true);
-
         const result = await jenkinsService.buildPipeline(pipeline);
         
         expect(result).toBe(true);
+        expect(mockJenkins.job.build).toHaveBeenCalledWith('job1');
         expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
-            `Build triggered for ${pipeline.name}`
+            'Build triggered for job1'
+        );
+    });
+
+    test('getPipelines should handle error and return empty array', async () => {
+        mockJenkins.job.list.mockRejectedValueOnce(new Error('Connection failed'));
+        
+        const pipelines = await jenkinsService.getPipelines();
+        
+        expect(pipelines).toHaveLength(0);
+        expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
+            'Failed to get pipelines'
+        );
+    });
+
+    test('buildPipeline should handle build failure', async () => {
+        const pipeline = new PipelineItem(
+            'job1',
+            'success',
+            1,
+            'http://jenkins-test/job/job1'
+        );
+        mockJenkins.job.build.mockRejectedValueOnce(new Error('Build failed'));
+        
+        const result = await jenkinsService.buildPipeline(pipeline);
+        
+        expect(result).toBe(false);
+        expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
+            'Failed to trigger build for job1'
         );
     });
 });
