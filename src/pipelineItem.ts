@@ -2,6 +2,9 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 
 export class PipelineItem extends vscode.TreeItem {
+    // 추가 명령어들을 위한 배열
+    commands?: vscode.Command[];
+
     constructor(
         public readonly name: string,
         public readonly status: string,
@@ -24,17 +27,15 @@ export class PipelineItem extends vscode.TreeItem {
         this.contextValue = 'pipeline';
     }
 
-    private getIconPath(status: string): { light: vscode.Uri; dark: vscode.Uri } | undefined {
+    private getIconPath(status: string): { light: string; dark: string } {
         const iconName = this.getIconName(status);
-        if (!iconName) return undefined;
-
         return {
-            light: vscode.Uri.file(path.join(__filename, '..', '..', 'resources', 'light', `${iconName}.svg`)),
-            dark: vscode.Uri.file(path.join(__filename, '..', '..', 'resources', 'dark', `${iconName}.svg`))
+            light: vscode.Uri.file(path.join(__filename, '..', '..', 'resources', 'light', `${iconName}.svg`)).toString(),
+            dark: vscode.Uri.file(path.join(__filename, '..', '..', 'resources', 'dark', `${iconName}.svg`)).toString()
         };
     }
 
-    private getIconName(status: string): string | undefined {
+    private getIconName(status: string): string {
         switch (status.toLowerCase()) {
             case 'success':
             case 'blue':

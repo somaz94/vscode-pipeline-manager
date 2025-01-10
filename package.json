@@ -3,7 +3,7 @@
   "publisher": "somaz",
   "displayName": "vscode-pipeline-manager",
   "description": "A pipeline manager for GitLab/Jenkins",
-  "version": "0.0.2",
+  "version": "0.0.1",
   "repository": "https://github.com/somaz94/vscode-pipeline-manager",
   "engines": {
     "vscode": "^1.93.0"
